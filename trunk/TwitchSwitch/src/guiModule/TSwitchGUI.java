@@ -1,6 +1,5 @@
 package guiModule;
 
-import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
@@ -31,6 +30,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
@@ -40,6 +40,7 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultCaret;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -140,8 +141,11 @@ public class TSwitchGUI extends JFrame {
         chatScroller
                 .setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
+        // chatScroller.getVerticalScrollBar().setUnitIncrement(16);
+        ((DefaultCaret) chatArea.getCaret())
+                .setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
         // makes sure scrollbar autoscrolls.
-        new SmartScroller(chatScroller);
+        // new SmartScroller(chatScroller);
 
         // add all the components to the frame.
         infoTab.add(logoImg, "pushx, wrap,center,w 150!,h 150!");
@@ -342,16 +346,21 @@ public class TSwitchGUI extends JFrame {
 
                 if (sender.equalsIgnoreCase(control.getUsername())) {
                     // this is our own message.
-                    StyleConstants.setForeground(keyWordSender, Color.BLUE);
-                    StyleConstants.setForeground(keyWordMessage, Color.BLACK);
+                    StyleConstants.setForeground(keyWordSender,
+                            ChatColors.DARK_BLUE);
+                    StyleConstants.setForeground(keyWordMessage,
+                            ChatColors.BLACK);
                 } else if (sender.equalsIgnoreCase("jtv")) {
                     // this is a twitch server message.
-                    StyleConstants.setForeground(keyWordSender, Color.GREEN);
-                    StyleConstants.setForeground(keyWordMessage, Color.GREEN);
+                    StyleConstants.setForeground(keyWordSender,
+                            ChatColors.DARK_GREEN);
+                    StyleConstants.setForeground(keyWordMessage,
+                            ChatColors.DARK_GREEN);
                 } else {
                     // this is a regular user message.
-                    StyleConstants.setForeground(keyWordSender, Color.RED);
-                    StyleConstants.setForeground(keyWordMessage, Color.BLACK);
+                    StyleConstants.setForeground(keyWordSender, ChatColors.RED);
+                    StyleConstants.setForeground(keyWordMessage,
+                            ChatColors.BLACK);
                 }
 
                 StyleConstants.setBold(keyWordSender, true);
@@ -365,10 +374,32 @@ public class TSwitchGUI extends JFrame {
                             senderString.length() + messageString.length(),
                             chatAreaDoc.getLength());
 
+                    // Determine if scroll is at bottom(For autoscroll).
+                    final JScrollBar vbar = chatScroller.getVerticalScrollBar();
+                    final boolean atEnd = vbar.getMaximum() == vbar.getValue()
+                            + vbar.getVisibleAmount();
+                    // insert messages
                     chatAreaDoc.insertString(chatAreaDoc.getLength(),
                             senderString, keyWordSender);
                     chatAreaDoc.insertString(chatAreaDoc.getLength(),
                             messageString, keyWordMessage);
+
+                    // Autoscroll to new bottom if scroll position was at bottom
+                    // before insert. Needs to be queued to ensure maximum has
+                    // been updated since insert.
+                    if (atEnd) {
+                        EventQueue.invokeLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                EventQueue.invokeLater(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        vbar.setValue(vbar.getMaximum());
+                                    }
+                                });
+                            }
+                        });
+                    }
                 } catch (final Exception e) {
                     e.printStackTrace();
                 }
