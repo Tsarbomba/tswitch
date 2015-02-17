@@ -39,6 +39,8 @@ import javax.swing.JTextPane;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.border.EtchedBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.SimpleAttributeSet;
@@ -67,6 +69,7 @@ public class TSwitchGUI extends JFrame {
     private final JTextArea logArea;
     private final JButton sendInputBtn, btnOpen;
     private final JScrollPane chatScroller, logScroller;
+    private final JScrollBar vChatBar;
     private final JTabbedPane tabPane = new JTabbedPane(JTabbedPane.TOP);
     private final StyledDocument chatAreaDoc;
     private final SimpleAttributeSet keyWordSender = new SimpleAttributeSet();
@@ -98,6 +101,7 @@ public class TSwitchGUI extends JFrame {
 
         tabPane.addTab("Stream", infoTab);
         tabPane.addTab("Chat", chatTab);
+        final int chatTabIndex = 1;
         tabPane.addTab("Log", logTab);
 
         iconCache.put("default", new ImageIcon(new BufferedImage(150, 150,
@@ -118,6 +122,7 @@ public class TSwitchGUI extends JFrame {
         chatArea.setEditable(false);
         chatArea.setText("");
         chatScroller = new JScrollPane(chatArea);
+        vChatBar = chatScroller.getVerticalScrollBar();
         logArea = new JTextArea();
         logArea.setEditable(false);
         logArea.setWrapStyleWord(true);
@@ -161,6 +166,17 @@ public class TSwitchGUI extends JFrame {
 
         logTab.add(logScroller, "grow,push");
         buildMenu();
+
+        tabPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(final ChangeEvent changeEvent) {
+                // reset the scroll to the bottom of chat if we switched to the
+                // chatTab.
+                if (tabPane.getSelectedIndex() == chatTabIndex) {
+                    vChatBar.setValue(vChatBar.getMaximum());
+                }
+            }
+        });
 
         sendInputBtn.addActionListener(new ActionListener() {
 
@@ -374,10 +390,10 @@ public class TSwitchGUI extends JFrame {
                             senderString.length() + messageString.length(),
                             chatAreaDoc.getLength());
 
-                    // Determine if scroll is at bottom(For autoscroll).
-                    final JScrollBar vbar = chatScroller.getVerticalScrollBar();
-                    final boolean atEnd = vbar.getMaximum() == vbar.getValue()
-                            + vbar.getVisibleAmount();
+                    // Determine if vertical scrollbar is at bottom(For
+                    // autoscroll).
+                    final boolean atEnd = vChatBar.getMaximum() == vChatBar
+                            .getValue() + vChatBar.getVisibleAmount();
                     // insert messages
                     chatAreaDoc.insertString(chatAreaDoc.getLength(),
                             senderString, keyWordSender);
@@ -385,8 +401,9 @@ public class TSwitchGUI extends JFrame {
                             messageString, keyWordMessage);
 
                     // Autoscroll to new bottom if scroll position was at bottom
-                    // before insert. Needs to be queued to ensure maximum has
-                    // been updated since insert.
+                    // before insert OR if the tab is not selected. Needs to be
+                    // queued to ensure maximum has been updated since insert.
+
                     if (atEnd) {
                         EventQueue.invokeLater(new Runnable() {
                             @Override
@@ -394,7 +411,7 @@ public class TSwitchGUI extends JFrame {
                                 EventQueue.invokeLater(new Runnable() {
                                     @Override
                                     public void run() {
-                                        vbar.setValue(vbar.getMaximum());
+                                        vChatBar.setValue(vChatBar.getMaximum());
                                     }
                                 });
                             }
