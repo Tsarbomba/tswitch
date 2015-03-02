@@ -7,12 +7,17 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
@@ -78,6 +83,8 @@ public class TSwitchGUI extends JFrame {
             "[yy-MM-dd HH:mm:ss]");
     private final Date date = new Date();
     private ActionListener comboboxListener;
+    private Matcher emotesRegXpMatcher;
+    private HashMap<String, SimpleAttributeSet> emoteIconStyles = new HashMap<String, SimpleAttributeSet>();
 
     /**
      * Create the frame.
@@ -357,6 +364,7 @@ public class TSwitchGUI extends JFrame {
 
     public void chatMessage(final String sender, final String message) {
         EventQueue.invokeLater(new Runnable() {
+
             @Override
             public void run() {
 
@@ -397,8 +405,40 @@ public class TSwitchGUI extends JFrame {
                     // insert messages
                     chatAreaDoc.insertString(chatAreaDoc.getLength(),
                             senderString, keyWordSender);
-                    chatAreaDoc.insertString(chatAreaDoc.getLength(),
-                            messageString, keyWordMessage);
+
+                    // check for and insert any detected emotes.
+                    if (emotesRegXpMatcher != null) {
+                        emotesRegXpMatcher.reset(messageString);
+                        int parsedEIndex = 0;
+                        while (emotesRegXpMatcher.find()) {
+
+                            final int emoteSIndex = emotesRegXpMatcher.start();
+                            final int emoteEIndex = emotesRegXpMatcher.end();
+                            // insert any text before the emote.
+                            chatAreaDoc.insertString(chatAreaDoc.getLength(),
+                                    messageString.substring(parsedEIndex,
+                                            emoteSIndex), keyWordMessage);
+                            // insert emote icon
+
+                            final String emoteText = messageString.substring(
+                                    emoteSIndex, emoteEIndex);
+                            chatAreaDoc.insertString(chatAreaDoc.getLength(),
+                                    emoteText, emoteIconStyles.get(emoteText));
+                            parsedEIndex = emoteEIndex;
+
+                        }
+                        // inserts any text left after the last emote OR all the
+                        // text if no emotes were found at all.
+                        if (parsedEIndex < messageString.length()) {
+                            chatAreaDoc.insertString(chatAreaDoc.getLength(),
+                                    messageString.substring(parsedEIndex),
+                                    keyWordMessage);
+                        }
+                    } else {
+                        // emotes disabled. So just regular text.
+                        chatAreaDoc.insertString(chatAreaDoc.getLength(),
+                                messageString, keyWordMessage);
+                    }
 
                     // Autoscroll to new bottom if scroll position was at bottom
                     // before insert OR if the tab is not selected. Needs to be
@@ -616,4 +656,52 @@ public class TSwitchGUI extends JFrame {
 
     }
 
+    public void setChatEmoteIcons(
+            final ConcurrentHashMap<String, String> emoteSet) {
+        final StringBuffer regexPatternString = new StringBuffer();
+        final HashMap<String, SimpleAttributeSet> emotes = new HashMap<String, SimpleAttributeSet>();
+        for (final Entry<String, String> emoteData : emoteSet.entrySet()) {
+            regexPatternString.append("\\b" + emoteData.getKey() + "\\b|");
+            // the emote names are unique so if we already an attrib for the
+            // specific emote we can just copy it from the previous emote set.
+            if (emoteIconStyles.containsKey(emoteData.getKey())) {
+                emotes.put(emoteData.getKey(),
+                        emoteIconStyles.get(emoteData.getKey()));
+            } else {
+                final SimpleAttributeSet emoteAttrib = new SimpleAttributeSet();
+                StyleConstants.setIcon(emoteAttrib,
+                        createImageIcon(emoteData.getValue()));
+                emotes.put(emoteData.getKey(), emoteAttrib);
+            }
+        }
+        // remove last trailing | from pattern.
+        regexPatternString.deleteCharAt(regexPatternString.length() - 1);
+
+        final Pattern emotesPattern = Pattern.compile(regexPatternString
+                .toString());
+        EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                // update the emoteMatcher and global emoteicon set. We force
+                // this to be done on the EDT to be sure we're not swapping
+                // matcher mid-loop.
+                emoteIconStyles = emotes;
+                emotesRegXpMatcher = emotesPattern.matcher("");
+            }
+        });
+
+    }
+
+    private ImageIcon createImageIcon(final String sURL) {
+
+        try {
+            final URL url = new URL(sURL);
+            final BufferedImage img = ImageIO.read(url);
+            return new ImageIcon(img);
+        } catch (final IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

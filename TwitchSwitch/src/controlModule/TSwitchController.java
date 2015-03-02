@@ -173,6 +173,7 @@ public class TSwitchController {
                             + newChannel);
                     gui.clearChat();
                     gui.setChatChannelName(selStream);
+                    retrieveAndSetEmoteIcons(selStream);
                 }
                 return;
             }
@@ -253,6 +254,22 @@ public class TSwitchController {
                 addChannel(followedChannels);
                 gui.logMessage("System", "Added channels followed by > "
                         + settings.getUsername());
+            }
+        });
+
+    }
+
+    public void retrieveAndSetEmoteIcons(final String channelName) {
+
+        // We run the process on a separate thread since it can
+        // take a while.
+        scheduler.execute(new Thread() {
+            @Override
+            public void run() {
+                final ConcurrentHashMap<String, String> emotes = apiHandler
+                        .getChannelChatEmotes(channelName);
+                gui.setChatEmoteIcons(emotes);
+                gui.logMessage("System", "Retrieved supported chat emotes.");
             }
         });
 

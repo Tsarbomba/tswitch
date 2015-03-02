@@ -71,7 +71,8 @@ public class TwitchAPI {
                         .get("channel").getAsJsonObject();
 
                 final String name = cJobj.get("display_name").getAsString();
-                final StreamData sData = liveChannels.get(name.toLowerCase());
+                final StreamData sData = liveChannels.get(name
+                        .toLowerCase(Locale.US));
 
                 try {
                     // can apparently be null sometimes.
@@ -159,5 +160,49 @@ public class TwitchAPI {
             }
         }
         return followedChannels;
+    }
+
+    public ConcurrentHashMap<String, String> getChannelChatEmotes(
+            final String channelName) {
+
+        final ConcurrentHashMap<String, String> channelEmotes = new ConcurrentHashMap<String, String>();
+
+        BufferedReader in = null;
+        try {
+            final URL url = new URL(ROOT_API_URL + "chat/"
+                    + channelName.toLowerCase(Locale.US) + "/emoticons");
+
+            // open a connection to the web server and then get the resulting
+            // data
+            final URLConnection connection = url.openConnection();
+            connection.setRequestProperty("Accept",
+                    "application/vnd.twitchtv.v3+json");
+
+            in = new BufferedReader(new InputStreamReader(
+                    connection.getInputStream(), StandardCharsets.UTF_8));
+            final JsonObject jsObj = new JsonParser().parse(in)
+                    .getAsJsonObject();
+            final JsonArray emoticons = jsObj.getAsJsonArray("emoticons");
+            for (int i = 0; i < emoticons.size(); i++) {
+                final JsonElement emoteData = emoticons.get(i);
+                final String emoteRegex = emoteData.getAsJsonObject()
+                        .get("regex").getAsString();
+                final String emoteUrl = emoteData.getAsJsonObject().get("url")
+                        .getAsString();
+                channelEmotes.put(emoteRegex, emoteUrl);
+
+            }
+
+        } catch (final IOException e1) {
+            e1.printStackTrace();
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (final IOException e) {
+                }
+            }
+        }
+        return channelEmotes;
     }
 }
