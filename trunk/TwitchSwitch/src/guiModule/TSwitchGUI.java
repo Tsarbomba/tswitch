@@ -130,6 +130,7 @@ public class TSwitchGUI extends JFrame {
         chatArea.setText("");
         chatScroller = new JScrollPane(chatArea);
         vChatBar = chatScroller.getVerticalScrollBar();
+
         logArea = new JTextArea();
         logArea.setEditable(false);
         logArea.setWrapStyleWord(true);
@@ -147,7 +148,6 @@ public class TSwitchGUI extends JFrame {
         comboBox.setRenderer(new IconListCellRenderer());
 
         chatAreaDoc = chatArea.getStyledDocument();
-
         chatScroller
                 .setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         chatScroller
@@ -374,12 +374,14 @@ public class TSwitchGUI extends JFrame {
                             ChatColors.DARK_BLUE);
                     StyleConstants.setForeground(keyWordMessage,
                             ChatColors.BLACK);
+
                 } else if (sender.equalsIgnoreCase("jtv")) {
                     // this is a twitch server message.
                     StyleConstants.setForeground(keyWordSender,
                             ChatColors.DARK_GREEN);
                     StyleConstants.setForeground(keyWordMessage,
                             ChatColors.DARK_GREEN);
+
                 } else {
                     // this is a regular user message.
                     StyleConstants.setForeground(keyWordSender, ChatColors.RED);
@@ -423,7 +425,7 @@ public class TSwitchGUI extends JFrame {
                             final String emoteText = messageString.substring(
                                     emoteSIndex, emoteEIndex);
                             chatAreaDoc.insertString(chatAreaDoc.getLength(),
-                                    emoteText, emoteIconStyles.get(emoteText));
+                                    "#", emoteIconStyles.get(emoteText));
                             parsedEIndex = emoteEIndex;
 
                         }
@@ -434,6 +436,7 @@ public class TSwitchGUI extends JFrame {
                                     messageString.substring(parsedEIndex),
                                     keyWordMessage);
                         }
+
                     } else {
                         // emotes disabled. So just regular text.
                         chatAreaDoc.insertString(chatAreaDoc.getLength(),
