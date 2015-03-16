@@ -67,6 +67,7 @@ public class TSwitchController {
             public void run() {
                 scheduler.shutdownNow();
                 ircHandler.shutdownGracefully();
+                TSwitchMain.closeSocket();
             }
         });
 
