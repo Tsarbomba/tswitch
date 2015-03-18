@@ -7,15 +7,15 @@ The current version(BETA) has been developed on a Windows 7 platform. However it
 
 <b>HOWTO:</b><br>
 
-TSwitch BETA 2 requires at least Java 8u40 since it uses JavaFX Dialogs. The old BETA 1 client uses Swing and should work with any Java version.
+TSwitch BETA 2 requires at least Java 8u40 since it uses JavaFX Dialogs. The old BETA 1 client uses Swing and should work with any Java 8 version.
 
 <ol><li>Install/Update to latest <a href='https://www.java.com/'>Java</a> 
 </li><li>Install the latest version of <a href='http://docs.livestreamer.io/'>Livestreamer</a></li></ol>
 
-<b>DOWNLOAD:</b><br> <a href='https://github.com/Tsarbomba/tswitch/raw/master/TwitchSwitch/build/TSwitch-FX.jar'>Get latest BETA 2 build here</a>.<br><a href='https://github.com/Tsarbomba/tswitch/raw/master/TwitchSwitch/build/TSwitch-BETA1-Swing.rar'>Alternatively get the discontinued Swing BETA 1 client incl. src here</a>.<br>
+<b>DOWNLOAD:</b><br> Get latest BETA 2 build <a href='https://github.com/Tsarbomba/tswitch/raw/master/TwitchSwitch/build/TSwitch-FX.jar'>here</a>.<br>Alternatively get the discontinued Swing BETA 1 client incl. src<a href='https://github.com/Tsarbomba/tswitch/raw/master/TwitchSwitch/build/TSwitch-BETA1-Swing.rar'> here</a>.<br>
 <br>
 <b>TROUBLESHOOTING:</b><br>
-If no video is loaded make sure you have livestreamer installed and in your PATH.(Open a cmd window and type "livestreamer twitch.tv/ChannelName" without quotes and ChannelName replaced with an actual twitch.tv channel name.<br>
+If no video loads when you press the Watch button on a live stream, make sure you have livestreamer installed and in your PATH. To check that you do, open a cmd window and type "livestreamer twitch.tv/ChannelName" without quotes and ChannelName replaced with an actual twitch.tv channel name.<br>
 <br>
 <img src='https://i.imgur.com/HTXSxAz.png' />
 <img src='https://i.imgur.com/aLjXelM.png' />
