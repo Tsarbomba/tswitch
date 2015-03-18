@@ -175,46 +175,48 @@ public class TSwitchMainController implements Initializable {
 
 		// task queries the API for updated stream data every 5min.
 		apiUpdateWork = () -> {
-			logMessage("System", "Retrieving API data.");
-			final List<String> channels = settings.getChannels();
-			final ConcurrentHashMap<String, StreamData> newData;
+			/*
+			 * This whole runnable is wrapped in a catch-all try. This is ofc
+			 * bad practice however we can't let this runnable throw an
+			 * exception because the Java scheduler cancels recurring tasks(our
+			 * scheduled api updates) if an exception is ever thrown.
+			 */
 			try {
+				logMessage("System", "Retrieving API data.");
+				final List<String> channels = settings.getChannels();
+				final ConcurrentHashMap<String, StreamData> newData;
 
 				newData = apiHandler.getChannelData(channels);
 
-			} catch (final Exception e1) {
-				// if the twitchAPI request fails we
-				// leave the old data.
-				e1.printStackTrace();
-				logMessage("System",
-						"Failed to retrieve API data. Using previous data instead.");
+				final ObservableList<StreamData> streamsData = FXCollections
+						.observableList(new LinkedList<StreamData>());
+
+				// we loop channels instead of newData to preserve order.
+				for (final String channelName : channels) {
+					streamsData.add(newData.get(channelName));
+				}
+
+				logMessage("System", "Refreshing data in GUI.");
+				Runnable guijob = () -> {
+					StreamData oldSelection = streamSelectionBox
+							.getSelectionModel().getSelectedItem();
+					// detach the event dispatcher to prevent a selection
+					// change event to fire.
+					EventHandler<ActionEvent> edTmp = streamSelectionBox
+							.getOnAction();
+					streamSelectionBox.setOnAction(null);
+					streamSelectionBox.setItems(streamsData);
+					streamSelectionBox.getSelectionModel().select(oldSelection);
+					// set the event dispatcher back now that we've updated
+					// the combobox.
+					streamSelectionBox.setOnAction(edTmp);
+				};
+				Platform.runLater(guijob);
+			} catch (Throwable e) {
+				// we can't allow exceptions to be thrown out of this runnable.
+				logMessage("System", "Failed to retrieve API data.");
 				return;
 			}
-			final ObservableList<StreamData> streamsData = FXCollections
-					.observableList(new LinkedList<StreamData>());
-
-			// we loop channels instead of newData to preserve order.
-			for (final String channelName : channels) {
-				streamsData.add(newData.get(channelName));
-			}
-
-			logMessage("System", "Refreshing data in GUI.");
-			Runnable guijob = () -> {
-				StreamData oldSelection = streamSelectionBox
-						.getSelectionModel().getSelectedItem();
-				// detach the event dispatcher to prevent a selection
-				// change event to fire.
-				EventHandler<ActionEvent> edTmp = streamSelectionBox
-						.getOnAction();
-				streamSelectionBox.setOnAction(null);
-				streamSelectionBox.setItems(streamsData);
-				streamSelectionBox.getSelectionModel().select(oldSelection);
-				// set the event dispatcher back now that we've updated
-				// the combobox.
-				streamSelectionBox.setOnAction(edTmp);
-			};
-			Platform.runLater(guijob);
-
 		};
 
 		// schedule the periodic updates.
@@ -274,9 +276,11 @@ public class TSwitchMainController implements Initializable {
 
 			final ProcessBuilder builder = new ProcessBuilder("livestreamer",
 					"twitch.tv/" + streamSelectionBox.getValue(), streamQuality);
+			builder.inheritIO();
 			builder.start();
 			logMessage("System", "Requested Livestreamer to open > twitch.tv/"
 					+ streamSelectionBox.getValue());
+
 		} catch (final Exception e) {
 			e.printStackTrace();
 		}

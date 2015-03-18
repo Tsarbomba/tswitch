@@ -96,6 +96,10 @@ public class TSwitchChatController implements TIRCInputListener {
 		} else if (sender.equalsIgnoreCase("jtv")) {
 			// this is a twitch server message.
 			senderNode.getStyleClass().addAll("senderTwitch");
+		} else if (sender.equalsIgnoreCase("twitchnotify")
+				|| sender.equalsIgnoreCase("moobot")) {
+			// this is a twitch bot message
+			senderNode.getStyleClass().addAll("senderBot");
 		} else {
 			// this is a regular user message.
 			senderNode.getStyleClass().addAll("senderUser");

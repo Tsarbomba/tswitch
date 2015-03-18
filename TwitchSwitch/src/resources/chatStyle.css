@@ -1,10 +1,3 @@
-.paragraphOdd {
-    -fx-background-color: rgb(200, 200, 200);
-}
-
-.paragraphEven {
-    -fx-background-color: rgb(217, 217, 217);
-}
 
 .senderOwn {
     -fx-fill: blue;
@@ -18,5 +11,10 @@
 
 .senderUser{
     -fx-fill: red;
+	-fx-font-weight: bold;
+}
+
+.senderBot {
+    -fx-fill: peru;
 	-fx-font-weight: bold;
 }
