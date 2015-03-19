@@ -1,6 +1,5 @@
 package apiModule;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
@@ -13,10 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 
 public class TwitchAPI {
@@ -26,20 +21,7 @@ public class TwitchAPI {
 	private ConcurrentHashMap<String, StreamData> liveChannels;
 
 	public ConcurrentHashMap<String, StreamData> getChannelData(
-			final List<String> channels) throws IOException {
-
-		// Don't request from API if too early since last update. However add
-		// any new channels to the HashMap.
-		// if ((System.currentTimeMillis() - timestamp) < UPDATE_INTERVAL_LIMIT)
-		// {
-		// timestamp = System.currentTimeMillis();
-		// for (final String channel : channels) {
-		// liveChannels.putIfAbsent(channel.toLowerCase(Locale.US),
-		// new StreamData(channel.toLowerCase(Locale.US), "",
-		// "N/A", "N/A", "N/A", false));
-		// }
-		// return liveChannels;
-		// }
+			final List<String> channels) throws Exception {
 
 		liveChannels = new ConcurrentHashMap<String, StreamData>();
 		final StringBuffer urlString = new StringBuffer(ROOT_API_URL
@@ -121,7 +103,6 @@ public class TwitchAPI {
 				}
 			}
 			reader.endObject();
-
 		}
 		return liveChannels;
 	}
@@ -146,20 +127,42 @@ public class TwitchAPI {
 		connection.setRequestProperty("Accept",
 				"application/vnd.twitchtv.v3+json");
 
-		try (BufferedReader in = new BufferedReader(new InputStreamReader(
-				connection.getInputStream(), StandardCharsets.UTF_8));) {
+		try (JsonReader reader = new JsonReader(new InputStreamReader(
+				connection.getInputStream(), StandardCharsets.UTF_8))) {
 
-			final JsonObject jsObj = new JsonParser().parse(in)
-					.getAsJsonObject();
-			final JsonArray follows = jsObj.getAsJsonArray("follows");
-			for (int i = 0; i < follows.size(); i++) {
-				final JsonElement followData = follows.get(i);
-				final JsonObject cJobj = followData.getAsJsonObject()
-						.get("channel").getAsJsonObject();
-
-				// add the channel name to the followed channels list.
-				followedChannels.add(cJobj.get("display_name").getAsString());
+			reader.beginObject(); // JSON root
+			while (reader.hasNext()) { // _links and emoticons
+				String name = reader.nextName();
+				if (name.equals("follows")) {
+					reader.beginArray(); // array of followed channel objects
+					while (reader.hasNext()) {
+						reader.beginObject(); // followed channel objects
+						while (reader.hasNext()) {
+							name = reader.nextName();
+							if (name.equals("channel")) {
+								reader.beginObject(); // channel data object
+								while (reader.hasNext()) {
+									name = reader.nextName();
+									if (name.equals("display_name")) {
+										followedChannels.add(reader
+												.nextString());
+									} else {
+										reader.skipValue();
+									}
+								}
+								reader.endObject();
+							} else {
+								reader.skipValue();
+							}
+						}
+						reader.endObject();
+					}
+					reader.endArray();
+				} else {
+					reader.skipValue();
+				}
 			}
+			reader.endObject();
 
 		} catch (final IOException e1) {
 			e1.printStackTrace();
@@ -167,53 +170,12 @@ public class TwitchAPI {
 		return followedChannels;
 	}
 
-	public HashMap<String, String> getChannelChatEmotes(final String channelName)
-			throws IOException {
-
-		final HashMap<String, String> channelEmotes = new HashMap<String, String>();
-		URL url = null;
-		try {
-			url = new URL(ROOT_API_URL + "chat/"
-					+ channelName.toLowerCase(Locale.US) + "/emoticons");
-		} catch (MalformedURLException e2) {
-			// this should never happen unless the channelname is very odd.
-			e2.printStackTrace();
-		}
-
-		// open a connection to the web server and then get the resulting
-		// data
-		final URLConnection connection = url.openConnection();
-		connection.setRequestProperty("Accept",
-				"application/vnd.twitchtv.v3+json");
-
-		try (BufferedReader in = new BufferedReader(new InputStreamReader(
-				connection.getInputStream(), StandardCharsets.UTF_8));) {
-
-			final JsonObject jsObj = new JsonParser().parse(in)
-					.getAsJsonObject();
-			final JsonArray emoticons = jsObj.getAsJsonArray("emoticons");
-			for (int i = 0; i < emoticons.size(); i++) {
-				final JsonElement emoteData = emoticons.get(i);
-				final String emoteRegex = emoteData.getAsJsonObject()
-						.get("regex").getAsString();
-				final String emoteUrl = emoteData.getAsJsonObject().get("url")
-						.getAsString();
-				channelEmotes.put(emoteRegex, emoteUrl);
-
-			}
-
-		} catch (final IOException e1) {
-			e1.printStackTrace();
-		}
-		return channelEmotes;
-	}
-
 	public HashMap<String, String> getAllChatEmotes() throws IOException {
 
 		final HashMap<String, String> emotes = new HashMap<String, String>();
 		URL url = null;
 		try {
-			url = new URL(ROOT_API_URL + "chat/emoticons");
+			url = new URL("http://twitchemotes.com/api_cache/v2/images.json");
 		} catch (MalformedURLException e2) {
 			// this should never happen.
 			e2.printStackTrace();
@@ -223,58 +185,41 @@ public class TwitchAPI {
 		// data
 
 		URLConnection connection = url.openConnection();
-		connection.setRequestProperty("Accept",
-				"application/vnd.twitchtv.v3+json");
 
 		// parse the official emotes from the Twitch API
 		try (JsonReader reader = new JsonReader(new InputStreamReader(
 				connection.getInputStream(), StandardCharsets.UTF_8))) {
 
 			reader.beginObject(); // JSON root
-			while (reader.hasNext()) { // _links and emoticons
+			while (reader.hasNext()) {
 				String name = reader.nextName();
-				if (name.equals("emoticons")) {
-					reader.beginArray(); // emoticons array
+				if (name.equals("images")) {
+					reader.beginObject();
 					while (reader.hasNext()) {
-						reader.beginObject(); // array object
+						String emoteID = reader.nextName();
 						String emoteRegex = null;
-						String emoteUrl = null;
+						reader.beginObject();
 						while (reader.hasNext()) {
 							name = reader.nextName();
-							if (name.equals("regex")) {
-								// object regex variable
+							if (name.equals("code")) {
 								emoteRegex = reader.nextString();
-							} else if (name.equals("images")) {
-								reader.beginArray(); // object images array
-								while (reader.hasNext()) {
-									reader.beginObject();
-									while (reader.hasNext()) {
-										name = reader.nextName();
-										if (name.equals("url")) {
-											// object url variable
-											emoteUrl = reader.nextString();
-										} else {
-											reader.skipValue();
-										}
-									}
-									reader.endObject();
-								}
-								reader.endArray();
 							} else {
 								reader.skipValue();
 							}
 						}
-						reader.endObject();
-						if (emoteRegex != null && emoteUrl != null) {
-							emotes.put(emoteRegex, emoteUrl);
+						if (emoteRegex != null && emoteID != null) {
+							emotes.put(emoteRegex,
+									"http://static-cdn.jtvnw.net/emoticons/v1/"
+											+ emoteID + "/1.0");
 						}
+						reader.endObject();
 					}
-					reader.endArray();
+					reader.endObject();
 				} else {
 					reader.skipValue();
 				}
 			}
-			reader.endObject();
+			reader.endObject(); // JSON root
 		}
 
 		// add the BetterTTV emotes https://api.betterttv.net/emotes
@@ -326,4 +271,5 @@ public class TwitchAPI {
 		}
 		return emotes;
 	}
+
 }

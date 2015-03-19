@@ -187,7 +187,9 @@ public class TSwitchMainController implements Initializable {
 				final ConcurrentHashMap<String, StreamData> newData;
 
 				newData = apiHandler.getChannelData(channels);
-
+				if (newData == null) {
+					throw new RuntimeException("Error retrieving API data.");
+				}
 				final ObservableList<StreamData> streamsData = FXCollections
 						.observableList(new LinkedList<StreamData>());
 
